@@ -230,6 +230,7 @@ export interface InputFormat {
   pattern?: string;
   function?: string;
   flattenSpec?: FlattenSpec;
+  keepNullColumns?: boolean;
 }
 
 export type DimensionMode = 'specific' | 'auto-detect';
@@ -292,6 +293,17 @@ export function normalizeSpec(spec: Partial<IngestionSpec>): IngestionSpec {
     spec = deepSet(spec, 'spec.tuningConfig.type', specType);
   }
   return spec as IngestionSpec;
+}
+
+/**
+ * Make sure that any extra junk in the spec other than 'type' and 'spec' is removed
+ * @param spec
+ */
+export function cleanSpec(spec: IngestionSpec): IngestionSpec {
+  return {
+    type: spec.type,
+    spec: spec.spec,
+  };
 }
 
 const INPUT_FORMAT_FORM_FIELDS: Field<InputFormat>[] = [
@@ -2391,7 +2403,7 @@ const TUNING_CONFIG_FORM_FIELDS: Field<TuningConfig>[] = [
     name: 'indexSpec.bitmap.type',
     label: 'Index bitmap type',
     type: 'string',
-    defaultValue: 'concise',
+    defaultValue: 'roaring',
     suggestions: ['concise', 'roaring'],
     info: <>Compression format for bitmap indexes.</>,
   },
@@ -2409,7 +2421,7 @@ const TUNING_CONFIG_FORM_FIELDS: Field<TuningConfig>[] = [
     type: 'string',
     defaultValue: 'lz4',
     suggestions: ['lz4', 'lzf', 'uncompressed'],
-    info: <>Compression format for metric columns.</>,
+    info: <>Compression format for primitive type metric columns.</>,
   },
   {
     name: 'indexSpec.longEncoding',

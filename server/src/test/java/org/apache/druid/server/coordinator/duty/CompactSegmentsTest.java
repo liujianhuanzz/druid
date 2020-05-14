@@ -360,7 +360,7 @@ public class CompactSegmentsTest
 
     private TestDruidLeaderClient(ObjectMapper jsonMapper)
     {
-      super(null, new TestNodeDiscoveryProvider(), null, null);
+      super(null, new TestNodeDiscoveryProvider(), null, null, null);
       this.jsonMapper = jsonMapper;
     }
 
@@ -484,7 +484,7 @@ public class CompactSegmentsTest
                 ),
                 ImmutableMap.of(
                     "bitmap",
-                    ImmutableMap.of("type", "concise"),
+                    ImmutableMap.of("type", "roaring", "compressRunOnSerialization", true),
                     "dimensionCompression",
                     "lz4",
                     "metricCompression",

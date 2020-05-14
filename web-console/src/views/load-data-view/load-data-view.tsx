@@ -71,6 +71,7 @@ import { updateSchemaWithSample } from '../../utils/druid-type';
 import {
   adjustIngestionSpec,
   adjustTuningConfig,
+  cleanSpec,
   DimensionMode,
   DimensionSpec,
   DimensionsSpec,
@@ -312,6 +313,7 @@ export interface LoadDataViewState {
   selectedFilterIndex: number;
   selectedFilter?: DruidFilter;
   showGlobalFilter: boolean;
+  newFilterValue?: Record<string, any>;
 
   // for schema
   schemaQueryState: QueryState<{
@@ -2065,7 +2067,7 @@ export class LoadDataView extends React.PureComponent<LoadDataViewProps, LoadDat
   }
 
   renderGlobalFilterControls() {
-    const { spec, showGlobalFilter } = this.state;
+    const { spec, showGlobalFilter, newFilterValue } = this.state;
     const intervals: string[] = deepGet(spec, 'spec.dataSchema.granularitySpec.intervals');
     const { restFilter } = splitFilter(deepGet(spec, 'spec.dataSchema.transformSpec.filter'));
     const hasGlobalFilter = Boolean(intervals || restFilter);
@@ -2093,19 +2095,24 @@ export class LoadDataView extends React.PureComponent<LoadDataViewProps, LoadDat
           />
           <FormGroup label="Extra filter">
             <JsonInput
-              value={restFilter}
-              onChange={f => {
-                const curFilter = splitFilter(
-                  deepGet(spec, 'spec.dataSchema.transformSpec.filter'),
-                );
-                const newFilter = joinFilter(deepSet(curFilter, `restFilter`, f));
-                this.updateSpec(deepSet(spec, 'spec.dataSchema.transformSpec.filter', newFilter));
-              }}
+              value={newFilterValue}
+              onChange={f => this.setState({ newFilterValue: f })}
               height="200px"
             />
           </FormGroup>
           <div className="control-buttons">
-            <Button text="Apply" intent={Intent.PRIMARY} onClick={() => this.queryForFilter()} />
+            <Button
+              text="Apply"
+              intent={Intent.PRIMARY}
+              onClick={() => {
+                const curFilter = splitFilter(
+                  deepGet(spec, 'spec.dataSchema.transformSpec.filter'),
+                );
+                const newFilter = joinFilter(deepSet(curFilter, `restFilter`, newFilterValue));
+                this.updateSpec(deepSet(spec, 'spec.dataSchema.transformSpec.filter', newFilter));
+                this.setState({ showGlobalFilter: false, newFilterValue: undefined });
+              }}
+            />
             <Button text="Cancel" onClick={() => this.setState({ showGlobalFilter: false })} />
           </div>
         </div>
@@ -2115,7 +2122,12 @@ export class LoadDataView extends React.PureComponent<LoadDataViewProps, LoadDat
         <FormGroup>
           <Button
             text={`${hasGlobalFilter ? 'Edit' : 'Add'} global filter`}
-            onClick={() => this.setState({ showGlobalFilter: true })}
+            onClick={() =>
+              this.setState({
+                showGlobalFilter: true,
+                newFilterValue: restFilter,
+              })
+            }
           />
         </FormGroup>
       );
@@ -2951,7 +2963,7 @@ export class LoadDataView extends React.PureComponent<LoadDataViewProps, LoadDat
 
     try {
       const resp = await axios.get(`/druid/indexer/v1/supervisor/${initSupervisorId}`);
-      this.updateSpec(resp.data);
+      this.updateSpec(cleanSpec(resp.data));
       this.setState({ continueToSpec: true });
       this.updateStep('spec');
     } catch (e) {
@@ -2967,7 +2979,7 @@ export class LoadDataView extends React.PureComponent<LoadDataViewProps, LoadDat
 
     try {
       const resp = await axios.get(`/druid/indexer/v1/task/${initTaskId}`);
-      this.updateSpec(resp.data.payload);
+      this.updateSpec(cleanSpec(resp.data.payload));
       this.setState({ continueToSpec: true });
       this.updateStep('spec');
     } catch (e) {
